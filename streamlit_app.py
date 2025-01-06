@@ -25,22 +25,12 @@ def download_file(file_id, output_path):
     if not os.path.exists(output_path):
         gdown.download(url, output_path, quiet=False)
 
-# Preprocess user query
-def preprocess_query(query):
-    """
-    Preprocess and correct the user query.
-    :param query: User input query.
-    :return: Cleaned and corrected query.
-    """
-    corrected_query = str(TextBlob(query).correct())
-    return re.sub(r'[^\w\s]', '', corrected_query.lower()).strip()
-
 # Google Drive File IDs and Paths
 file_ids = {
-    "cleaned_dataset": "YOUR_FILE_ID_FOR_cleaned_dataset_with_embeddings",
-    "recommender_model": "YOUR_FILE_ID_FOR_medicine_recommender",
-    "symptom_embeddings": "YOUR_FILE_ID_FOR_symptom_embeddings",
-    "data5": "YOUR_FILE_ID_FOR_5.csv"
+    "cleaned_dataset": "11tLsqLqVF3WFLvcoTz0wcs0iYYbncMrH",  # File ID for cleaned_dataset_with_embeddings.pkl
+    "recommender_model": "12C6U60REeFWUEdxbNDOIWSA_hSE0YOGV",  # File ID for medicine_recommender.pkl
+    "symptom_embeddings": "128-LKwh37MMOrIgO5HutE4c3PG5NX76i",  # File ID for symptom_embeddings.pkl
+    "data5": "11xhQufvXsTwjb4iKLp4l5S0ube8af5Rs"  # File ID for 5.csv
 }
 
 file_paths = {
@@ -53,6 +43,16 @@ file_paths = {
 # Download all files
 for key, file_id in file_ids.items():
     download_file(file_id, file_paths[key])
+
+# Preprocess user query
+def preprocess_query(query):
+    """
+    Preprocess and correct the user query.
+    :param query: User input query.
+    :return: Cleaned and corrected query.
+    """
+    corrected_query = str(TextBlob(query).correct())
+    return re.sub(r'[^\w\s]', '', corrected_query.lower()).strip()
 
 # Load resources for Disease Q&A
 @st.cache_resource
