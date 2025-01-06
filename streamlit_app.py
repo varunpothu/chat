@@ -1,136 +1,97 @@
+# Streamlit App for Disease Q&A Chatbot
 import streamlit as st
-import pandas as pd
-import numpy as np
-from tensorflow.keras.models import load_model
-from tensorflow.keras.preprocessing.sequence import pad_sequences
-from sentence_transformers import SentenceTransformer
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
-from textblob import TextBlob
 import pickle
-import gdown
-import joblib
-from fuzzywuzzy import process
-import os
+import numpy as np
+from sentence_transformers import SentenceTransformer
+import pandas as pd
 import re
+from textblob import TextBlob
+from sklearn.metrics.pairwise import cosine_similarity
+import gdown
 
 # Set page configuration
 st.set_page_config(page_title="Smart Healthcare Chatbot", layout="wide")
-
-# Function to download files from Google Drive
-def download_file(file_id, output_path):
-    url = f"https://drive.google.com/uc?id={file_id}"
-    if not os.path.exists(output_path):
-        gdown.download(url, output_path, quiet=False)
-
-# Google Drive File IDs and Paths
-file_ids = {
-    "cleaned_dataset": "11tLsqLqVF3WFLvcoTz0wcs0iYYbncMrH",
-    "gru_model": "1VCXEiEADyVz2NLJ8b0HGU8TftpZlFSS8",
-    "tokenizer": "122m9vzR4cvsRLC7lxlE8lcIfhVro_EPk",
-    "label_encoder": "12C6U60REeFWUEdxbNDOIWSA_hSE0YOGV",
-    "processed_data": "12MNsyrMBEylIhC__S0LPV_7cjhUTxFck",
-    "symptom_embeddings": "128-LKwh37MMOrIgO5HutE4c3PG5NX76i",
-    "data5": "11xhQufvXsTwjb4iKLp4l5S0ube8af5Rs"
-}
-
-file_paths = {
-    "cleaned_dataset": "cleaned_dataset_with_embeddings.pkl",
-    "gru_model": "gru_model.h5",
-    "tokenizer": "tokenizer.pkl",
-    "label_encoder": "label_encoder.pkl",
-    "processed_data": "processed_data.csv",
-    "symptom_embeddings": "symptom_embeddings.pkl",
-    "data5": "5.csv"
-}
-
-# Download all files
-for key, file_id in file_ids.items():
-    download_file(file_id, file_paths[key])
 
 # Preprocess user query
 def preprocess_query(query):
     corrected_query = str(TextBlob(query).correct())
     return re.sub(r'[^\w\s]', '', corrected_query.lower()).strip()
 
-# Load resources for Disease Q&A
+# Download the file from Google Drive
+def download_file_from_gdrive(file_id, output_path):
+    url = f"https://drive.google.com/uc?id={file_id}"
+    gdown.download(url, output_path, quiet=False)
+
+# Load model and embeddings
 @st.cache_resource
-def load_disease_resources():
-    with open(file_paths["cleaned_dataset"], "rb") as f:
+def load_resources():
+    # File ID from Google Drive
+    file_id = "1Xr9Kc6kA1bJ-3YH5aOJMG29lM0DohSmO"  # Replace with your actual file ID
+    output_path = "cleaned_dataset_with_embeddings.pkl"
+
+    # Download the file
+    download_file_from_gdrive(file_id, output_path)
+
+    # Load the dataset
+    with open(output_path, "rb") as f:
         df = pickle.load(f)
 
+    # Load models
     mini_lm_model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
     distilroberta_model = SentenceTransformer('sentence-transformers/all-distilroberta-v1')
-    bert_model = SentenceTransformer('sentence-transformers/all-mpnet-base-v2')
+    bert_model = SentenceTransformer('sentence-transformers/all-mpnet-base-v2')  # Example BERT variant
 
     return mini_lm_model, distilroberta_model, bert_model, df
 
-# Load resources for Medicine Recommendation
-@st.cache_resource
-def load_medicine_resources():
-    gru_model = load_model(file_paths["gru_model"])
-    tokenizer = joblib.load(file_paths["tokenizer"])
-    label_encoder = joblib.load(file_paths["label_encoder"])
-    processed_data = pd.read_csv(file_paths["processed_data"])
-    return gru_model, tokenizer, label_encoder, processed_data
-
-# Load all resources
-mini_lm_model, distilroberta_model, bert_model, df = load_disease_resources()
-gru_model, tokenizer, label_encoder, processed_data = load_medicine_resources()
+mini_lm_model, distilroberta_model, bert_model, df = load_resources()
 
 # Sidebar for navigation
 st.sidebar.header("Navigation")
-tabs = ["Disease Q&A", "Medicine Recommendation", "Medicine Details"]
-selected_tab = st.sidebar.selectbox("Choose a Tab", tabs)
+st.sidebar.info(f"**Dataset Size:** {len(df)} questions")
 
-if selected_tab == "Disease Q&A":
-    st.title("🩺 Disease Q&A Chatbot")
-    user_query = st.text_input("Ask a healthcare question:", placeholder="Type your question here...")
-    if user_query:
-        query_clean = preprocess_query(user_query)
+# Embedding selection
+embedding_type = st.sidebar.selectbox(
+    "Choose Embedding Type:",
+    ["mini_lm_embedding", "distilroberta_embedding", "bert_embedding", "bert_embedding_normalized"]
+)
+
+# Main Application
+st.title("🩺 Smart Healthcare Chatbot")
+st.markdown("""Welcome to the healthcare chatbot. Ask any question related to medical topics, and I'll provide the most relevant answer.""")
+
+# User input
+user_query = st.text_input("Ask your healthcare question:", placeholder="Type your question here...")
+st.markdown("---")
+
+if user_query:
+    # Preprocess query
+    query_clean = preprocess_query(user_query)
+
+    # Select model based on embedding type
+    if embedding_type == "mini_lm_embedding":
         query_embedding = mini_lm_model.encode(query_clean).reshape(1, -1)
-        df['similarity'] = df['mini_lm_embedding'].apply(
-            lambda x: cosine_similarity(query_embedding, np.array(x).reshape(1, -1))[0][0]
-        )
-        top_match = df.loc[df['similarity'].idxmax()]
-        st.success(f"**Answer:** {top_match['answer']}")
-        st.markdown(f"**Source:** {top_match['source']}")
-        st.markdown(f"**Focus Area:** {top_match['focus_area']}")
+    elif embedding_type == "distilroberta_embedding":
+        query_embedding = distilroberta_model.encode(query_clean).reshape(1, -1)
+    elif embedding_type == "bert_embedding" or embedding_type == "bert_embedding_normalized":
+        query_embedding = bert_model.encode(query_clean).reshape(1, -1)
 
-elif selected_tab == "Medicine Recommendation":
-    st.title("💊 Medicine Recommendation Chatbot")
-    user_input = st.text_input("Enter your symptoms:")
-    if user_input:
-        def recommend_medicine(symptoms):
-            data5 = pd.read_csv(file_paths["data5"])
-            vectorizer = TfidfVectorizer(stop_words='english')
-            tfidf_matrix = vectorizer.fit_transform(data5['uses'])
-            user_vector = vectorizer.transform([symptoms])
-            similarity_scores = cosine_similarity(user_vector, tfidf_matrix)
-            top_indices = similarity_scores.argsort()[0][-3:][::-1]
-            return data5.iloc[top_indices][['name', 'uses']]
+    # Calculate cosine similarity
+    df['similarity'] = df[embedding_type].apply(
+        lambda x: cosine_similarity(query_embedding, np.array(x).reshape(1, -1))[0][0]
+    )
+    top_match = df.loc[df['similarity'].idxmax()]
 
-        recommendations = recommend_medicine(user_input)
-        st.write("### Recommended Medicines:")
-        st.write(recommendations)
+    # Display results
+    st.success(f"**Answer:** {top_match['answer']}")
+    st.markdown(f"**Source:** {top_match['source']}")
+    st.markdown(f"**Focus Area:** {top_match['focus_area']}")
+    st.markdown(f"**Similarity Score:** {top_match['similarity']:.2f}")
 
-elif selected_tab == "Medicine Details":
-    st.title("🔍 Medicine Details Lookup")
-
-    def correct_medicine_name(input_name):
-        matched_name, score = process.extractOne(input_name.lower(), processed_data['medicine_name'].values)
-        return matched_name if score > 80 else None
-
-    user_input = st.text_input("Enter Medicine Name:")
-    if user_input:
-        corrected_name = correct_medicine_name(user_input)
-        if corrected_name:
-            details = processed_data[processed_data['medicine_name'] == corrected_name].iloc[0]
-            st.write("### Medicine Details:")
-            for key, value in details.items():
-                st.write(f"**{key}:** {value}")
-        else:
-            st.warning("Medicine not found.")
+    # Recommendations
+    st.subheader("Related Questions")
+    top_related = df.sort_values(by='similarity', ascending=False).head(3)
+    for _, row in top_related.iterrows():
+        st.write(f"- **{row['question_clean']}**")
 
 # Footer
 st.info("💡 For accurate healthcare advice, consult a medical professional.")
