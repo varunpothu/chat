@@ -1,3 +1,4 @@
+# Streamlit App for Healthcare Chatbot
 import streamlit as st
 import pickle
 import pandas as pd
@@ -8,22 +9,33 @@ from sentence_transformers import SentenceTransformer
 from textblob import TextBlob
 import gdown
 import os
+import re
 
 # Set page configuration
 st.set_page_config(page_title="Smart Healthcare Chatbot", layout="wide")
 
 # Function to download files from Google Drive
 def download_file(file_id, output_path):
+    """
+    Download a file from Google Drive using gdown.
+    :param file_id: The file ID from Google Drive link.
+    :param output_path: The local file path to save the downloaded file.
+    """
     url = f"https://drive.google.com/uc?id={file_id}"
     if not os.path.exists(output_path):
         gdown.download(url, output_path, quiet=False)
 
 # Preprocess user query
 def preprocess_query(query):
+    """
+    Preprocess and correct the user query.
+    :param query: User input query.
+    :return: Cleaned and corrected query.
+    """
     corrected_query = str(TextBlob(query).correct())
     return re.sub(r'[^\w\s]', '', corrected_query.lower()).strip()
 
-# File IDs from Google Drive
+# Google Drive File IDs and Paths
 file_ids = {
     "cleaned_dataset": "YOUR_FILE_ID_FOR_cleaned_dataset_with_embeddings",
     "recommender_model": "YOUR_FILE_ID_FOR_medicine_recommender",
@@ -31,7 +43,6 @@ file_ids = {
     "data5": "YOUR_FILE_ID_FOR_5.csv"
 }
 
-# Paths to download files locally
 file_paths = {
     "cleaned_dataset": "cleaned_dataset_with_embeddings.pkl",
     "recommender_model": "medicine_recommender.pkl",
@@ -39,7 +50,7 @@ file_paths = {
     "data5": "5.csv"
 }
 
-# Download all required files
+# Download all files
 for key, file_id in file_ids.items():
     download_file(file_id, file_paths[key])
 
@@ -78,11 +89,16 @@ if selected_tab == "Disease Q&A":
     st.title("🩺 Disease Q&A Chatbot")
     user_query = st.text_input("Ask a healthcare question:", placeholder="Type your question here...")
     if user_query:
+        # Preprocess query
         query_clean = preprocess_query(user_query)
+
+        # Select model and calculate embeddings
         query_embedding = mini_lm_model.encode(query_clean).reshape(1, -1)
         df['similarity'] = df['mini_lm_embedding'].apply(
             lambda x: cosine_similarity(query_embedding, np.array(x).reshape(1, -1))[0][0]
         )
+
+        # Find the most relevant answer
         top_match = df.loc[df['similarity'].idxmax()]
         st.success(f"**Answer:** {top_match['answer']}")
         st.markdown(f"**Source:** {top_match['source']}")
@@ -93,7 +109,11 @@ elif selected_tab == "Medicine Recommendation":
     user_input = st.text_input("Enter symptoms:")
     if user_input:
         recommendations = medicine_recommender.recommend(user_input, top_n=3)
-        st.write(recommendations)
+        if recommendations.empty:
+            st.warning("No medicines found for the provided symptoms.")
+        else:
+            st.write("### Recommended Medicines:")
+            st.write(recommendations)
 
 # Footer
 st.info("💡 For accurate healthcare advice, consult a medical professional.")
