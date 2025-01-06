@@ -19,14 +19,17 @@ def preprocess_query(query):
 
 # Download the file from Google Drive
 def download_file_from_gdrive(file_id, output_path):
-    url = f"https://drive.google.com/uc?id={file_id}"
-    gdown.download(url, output_path, quiet=False)
+    try:
+        url = f"https://drive.google.com/uc?id={file_id}&confirm=t"
+        gdown.download(url, output_path, quiet=False)
+    except Exception as e:
+        raise RuntimeError(f"Failed to download file from Google Drive: {e}")
 
 # Load model and embeddings
 @st.cache_resource
 def load_resources():
     # File ID from Google Drive
-    file_id = "1Xr9Kc6kA1bJ-3YH5aOJMG29lM0DohSmO"  # Replace with your actual file ID
+    file_id = "11tLsqLqVF3WFLvcoTz0wcs0iYYbncMrH"  # Correct file ID
     output_path = "cleaned_dataset_with_embeddings.pkl"
 
     # Download the file
