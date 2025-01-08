@@ -1,3 +1,5 @@
+
+You said:
 # Streamlit App for Healthcare Chatbot
 import streamlit as st
 import pickle
@@ -47,15 +49,51 @@ def preprocess_query(query):
     corrected_query = str(TextBlob(query).correct())
     return re.sub(r'[^\w\s]', '', corrected_query.lower()).strip()
 
-# Load resources for Medicine Search
+# Load resources for Disease Q&A
 @st.cache_resource
-def load_medicine_data():
+def load_disease_resources():
+    download_file_from_gdrive(file_ids["cleaned_dataset"], file_paths["cleaned_dataset"])
+    with open(file_paths["cleaned_dataset"], "rb") as f:
+        df = pickle.load(f)
+    mini_lm_model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
+    distilroberta_model = SentenceTransformer('sentence-transformers/all-distilroberta-v1')
+    bert_model = SentenceTransformer('sentence-transformers/all-mpnet-base-v2')
+    return mini_lm_model, distilroberta_model, bert_model, df
+
+# Load resources for Medicine Recommendation
+@st.cache_resource
+def load_medicine_resources():
     download_file_from_gdrive(file_ids["data5"], file_paths["data5"])
-    return pd.read_csv(file_paths["data5"])
+    data5 = pd.read_csv(file_paths["data5"])
+    return data5
+
+# Functions for Medicine Recommendation
+def is_emergency(symptoms):
+    emergency_symptoms = [
+        "chest pain", "severe bleeding", "difficulty breathing", "sudden confusion",
+        "loss of consciousness", "heart attack", "stroke", "difficulty speaking"
+    ]
+    for emergency in emergency_symptoms:
+        if emergency in symptoms.lower():
+            return True
+    return False
+
+def chatbot_response(symptoms, data5):
+    if is_emergency(symptoms):
+        return "This is an emergency. Please consult a healthcare professional immediately."
+    # Placeholder for actual recommendation logic
+    return {
+        "Medicine Name": "Paracetamol",
+        "Uses": "Fever and mild pain relief",
+        "Side Effects": "Nausea, rash",
+        "Substitutes": "Acetaminophen",
+        "Therapeutic Class": "Analgesic",
+        "Manufacturer": "Generic"
+    }
 
 # Sidebar for navigation
 st.sidebar.header("Navigation")
-tabs = ["Disease Q&A", "Medicine Recommendation", "Medicine Search"]
+tabs = ["Disease Q&A", "Medicine Recommendation"]
 selected_tab = st.sidebar.selectbox("Choose a Tab", tabs)
 
 if selected_tab == "Disease Q&A":
@@ -85,36 +123,19 @@ if selected_tab == "Disease Q&A":
         st.markdown(f"**Focus Area:** {top_match['focus_area']}")
 
 elif selected_tab == "Medicine Recommendation":
+    # Lazy loading for Medicine Recommendation
     st.info("Loading Medicine Recommendation resources...")
-    data5 = load_medicine_data()
+    data5 = load_medicine_resources()
     st.title("💊 Healthcare Medicine Recommendation Chatbot")
     user_input = st.text_input("Enter your symptoms:")
     if user_input:
-        # Placeholder for Medicine Recommendation logic
-        st.write("Recommendation logic placeholder.")
-
-elif selected_tab == "Medicine Search":
-    st.info("Loading Medicine Data...")
-    medicine_data = load_medicine_data()
-    st.title("🔍 Search for Medicine Information")
-    medicine_name = st.text_input("Enter the medicine name:")
-    if medicine_name:
-        filtered_data = medicine_data[medicine_data['Medicine Name'].str.contains(medicine_name, case=False, na=False)]
-        if not filtered_data.empty:
-            st.write("### Search Results:")
-            for index, row in filtered_data.iterrows():
-                st.write(f"**Medicine Name:** {row['Medicine Name']}")
-                st.write(f"**Uses:** {row['Uses']}")
-                st.write(f"**Side Effects:** {row['Side Effects']}")
-                st.write(f"**Substitutes:** {row['Substitutes']}")
-                st.write(f"**Therapeutic Class:** {row['Therapeutic Class']}")
-                st.write(f"**Manufacturer:** {row['Manufacturer']}")
-                # Display Image URL if available
-                if 'Image URL' in row and pd.notna(row['Image URL']):
-                    st.image(row['Image URL'], caption=row['Medicine Name'])
-                st.write("---")
+        response = chatbot_response(user_input, data5)
+        if isinstance(response, dict):
+            st.write("### Medicine Details:")
+            for key, value in response.items():
+                st.write(f"**{key}:** {value}")
         else:
-            st.warning("No matching medicine found. Please try a different search term.")
+            st.write(response)
 
 # Footer
 st.info("💡 For accurate healthcare advice, consult a medical professional.")
