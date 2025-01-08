@@ -1,5 +1,3 @@
-
-You said:
 # Streamlit App for Healthcare Chatbot
 import streamlit as st
 import pickle
