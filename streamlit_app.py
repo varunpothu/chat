@@ -76,10 +76,21 @@ def is_emergency(symptoms):
             return True
     return False
 
-def chatbot_response(symptoms, data5):
+def recommend_medicine(symptoms, data5):
     if is_emergency(symptoms):
         return "This is an emergency. Please consult a healthcare professional immediately."
     
+    # Convert user symptoms to lowercase
+    symptoms = symptoms.lower()
+    
+    # Check if symptoms match any entries in the dataset
+    matches = data5[data5['Symptoms'].str.contains(symptoms, case=False, na=False)]
+    
+    if not matches.empty:
+        # Return the first match or all matches
+        return matches.iloc[0].to_dict()  # Return as a dictionary
+    else:
+        return "No suitable medicine found for the given symptoms. Please consult a healthcare professional."
 
 # Sidebar for navigation
 st.sidebar.header("Navigation")
@@ -119,13 +130,13 @@ elif selected_tab == "Medicine Recommendation":
     st.title("💊 Healthcare Medicine Recommendation Chatbot")
     user_input = st.text_input("Enter your symptoms:")
     if user_input:
-        response = chatbot_response(user_input, data5)
+        response = recommend_medicine(user_input, data5)
         if isinstance(response, dict):
             st.write("### Medicine Details:")
             for key, value in response.items():
                 st.write(f"**{key}:** {value}")
         else:
-            st.write(response)
+            st.warning(response)
 
 # Footer
 st.info("💡 For accurate healthcare advice, consult a medical professional.")
