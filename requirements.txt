@@ -1,8 +1,6 @@
-streamlit==1.27.0
-pandas==1.5.3
-numpy==1.24.3
-scikit-learn==1.2.2
-sentence-transformers==2.2.2
-textblob==0.17.1
-gdown==4.7.1
-Pillow==9.5.0
+scikit-learn
+pandas
+numpy
+gdown
+textblob
+fuzzywuzzy
