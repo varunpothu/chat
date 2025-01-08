@@ -1,6 +1,8 @@
-scikit-learn
+streamlit
 pandas
 numpy
-gdown
+scikit-learn
+sentence-transformers
 textblob
-fuzzywuzzy
+gdown
+Pillow
