@@ -79,15 +79,7 @@ def is_emergency(symptoms):
 def chatbot_response(symptoms, data5):
     if is_emergency(symptoms):
         return "This is an emergency. Please consult a healthcare professional immediately."
-    # Placeholder for actual recommendation logic
-    return {
-        "Medicine Name": "Paracetamol",
-        "Uses": "Fever and mild pain relief",
-        "Side Effects": "Nausea, rash",
-        "Substitutes": "Acetaminophen",
-        "Therapeutic Class": "Analgesic",
-        "Manufacturer": "Generic"
-    }
+    
 
 # Sidebar for navigation
 st.sidebar.header("Navigation")
