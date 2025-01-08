@@ -1,3 +1,12 @@
+streamlit==1.41.1
+sentence-transformers==2.2.2
+transformers==4.31.0
+torch==2.5.1
+scikit-learn==1.6.0
+pandas==2.2.3
+numpy==2.2.1
+gdown==5.2.0
+textblob==0.18.0
 streamlit
 sentence-transformers
 pandas
